@@ -10,12 +10,12 @@ import pandas as pd
 
 from selenium import webdriver
 from bs4 import BeautifulSoup
-
+import time
 def get_marinetraffic_data():
     
-    browser = webdriver.Firefox()
+    browser = webdriver.Chrome()
     browser.get("https://www.marinetraffic.com/en/ais/details/ships/shipid:5754836/mmsi:211191540/vessel:LA FLACA")
-    
+    time.sleep(5)
     src = browser.page_source
     
     browser.close() # closes the browser (not the driver)
@@ -55,15 +55,6 @@ import telegram
 from telegram.error import NetworkError, Unauthorized
 from time import sleep
 
-proxy_args = {
-    'proxy_url': 'http://rb-proxy-static.bosch.com:8080',
-    # Optional, if you need authentication:
-    'urllib3_proxy_kwargs': {
-        'username': 'richlink',
-        'password': 'TheMiddle001',
-    }
-}
-
 def telegram_send_message_to_scali(message):
     update_id = None
     
@@ -72,7 +63,7 @@ def telegram_send_message_to_scali(message):
     with open('security_token.txt', 'r') as f:
     	token = f.read()
     	
-    bot = telegram.Bot(token, request_kwargs=proxy_args)
+    bot = telegram.Bot(token)
     
     # scali_logs chat group:
     scali_logs_id = -391443046
@@ -87,13 +78,13 @@ def telegram_send_message_to_scali(message):
     bot.send_message(scali_logs_id, message)
     
     
-telegram_send_message_to_scali("test")
+# telegram_send_message_to_scali("test")
 
 
 #%%
 
 # calculate values
-import geopy.distance
+#import geopy.distance
 
 
 # geopy.distance.distance((lat, long), (lat, long)).km
@@ -119,7 +110,8 @@ if os.path.isfile(cache_file):
     data.index = pd.to_datetime(data.index.values)
 else:
     # prime the csv file
-    data.to_csv(cache_file)
+    new_data.to_csv(cache_file)
+    data = new_data
     
 last_update = data.index[-1]
 
