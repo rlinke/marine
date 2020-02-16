@@ -11,6 +11,7 @@ import pandas as pd
 from selenium import webdriver
 from bs4 import BeautifulSoup
 import time
+
 def get_marinetraffic_data():
     
     browser = webdriver.Chrome()
@@ -82,19 +83,23 @@ def telegram_send_message_to_scali(message):
 
 
 #%%
-
+"""
 # calculate values
-#import geopy.distance
+import geopy.distance
 
+dist =[]
 
-# geopy.distance.distance((lat, long), (lat, long)).km
-
-
+for a, b in zip(data.iloc[:-1].values, data.iloc[1:].values):
+    lat, long = a
+    lat2, long2 = b
+    dist.append(geopy.distance.distance((lat, long), (lat2, long2)).km)
+    
+                
 def update_interval(last, now):
     
     diff = now - last
     
-    
+"""
     
 import os
 
@@ -121,8 +126,10 @@ if time_update > last_update:
     print("saving data")
     data.to_csv(cache_file)
     # finally send a message to telegram
-    telegram_send_message_to_scali("new data point {0}: {1}° lat | {2}° long".format(
-            str(time_update), lat, long))
+    telegram_msg = "new data point from {0}. current position: ".format(str(time_update)) + \
+            "https://www.google.com/maps/search/?api=1&query={0},{1}".format(
+                lat, long)
+    telegram_send_message_to_scali(telegram_msg)
 else:
     print("no new data - going back to sleep")
     
