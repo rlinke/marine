@@ -7,22 +7,14 @@ Created on Mon Feb 10 11:18:14 2020
 
 
 import pandas as pd
-
-from selenium import webdriver
 from bs4 import BeautifulSoup
-import time
 
-def get_marinetraffic_data():
+
+import requests
+
+def parse_html_response(content):
     
-    browser = webdriver.Chrome()
-    browser.get("https://www.marinetraffic.com/en/ais/details/ships/shipid:5754836/mmsi:211191540/vessel:LA FLACA")
-    time.sleep(5)
-    src = browser.page_source
-    
-    browser.close() # closes the browser (not the driver)
-    browser.quit() # __del__ of browser    
-    
-    soup = BeautifulSoup(src, 'html.parser')
+    soup = BeautifulSoup(content, 'html.parser')
     
     p_s = soup.find_all('p')
     time_update = None
@@ -36,6 +28,37 @@ def get_marinetraffic_data():
             elem = t.split(' ')
             # last element is the ° sign -> has to be ommitted
             lat, long = float(elem[3][:-1]), float(elem[5][:-1])
+    return time_update, lat, long
+    
+    
+def get_marine_data_requests(url):
+    headers = {
+	    "User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Mobile Safari/537.36"
+    }
+    
+    resp = requests.get(url, headers=headers)
+    
+    if resp.status_code == 200:
+        
+        return parse_html_response(src)
+
+    else:
+        raise Exception("error [{0}]: could not read url".format(resp.status_code)
+    
+    
+def get_marine_data_selenium(url):
+    
+    import time
+    from selenium import webdriver
+    browser = webdriver.Chrome()
+    browser.get(url)
+    time.sleep(5)
+    src = browser.page_source
+    
+    browser.close() # closes the browser (not the driver)
+    browser.quit() # __del__ of browser    
+    
+    time_update, lat, long = parse_html_response(src)
 
     if time_update is None:
         raise Exception("mybe website format changed -> time received not where it should be")
@@ -100,41 +123,43 @@ def update_interval(last, now):
     diff = now - last
     
 """
-    
-import os
+def main():
+    url = "https://www.marinetraffic.com/en/ais/details/ships/shipid:5754836/mmsi:211191540/vessel:LA FLACA"                     
+                        
+    import os
 
-time_update, lat, long = get_marinetraffic_data()
+    time_update, lat, long = get_marine_data_requests(url)
 
-new_data = pd.DataFrame([[lat, long]], index=[time_update], columns=["lat", "long"])
+    new_data = pd.DataFrame([[lat, long]], index=[time_update], columns=["lat", "long"])
 
-    
-cache_file = 'cache.csv'
+    cache_file = 'cache.csv'
 
-if os.path.isfile(cache_file):
-    data = pd.read_csv(cache_file, index_col=0)
-    data.index = pd.to_datetime(data.index.values)
-else:
-    # prime the csv file
-    new_data.to_csv(cache_file)
-    data = new_data
-    
-last_update = data.index[-1]
+    if os.path.isfile(cache_file):
+        data = pd.read_csv(cache_file, index_col=0)
+        data.index = pd.to_datetime(data.index.values)
+    else:
+        # prime the csv file
+        new_data.to_csv(cache_file)
+        data = new_data
 
-if time_update > last_update:
-    print("got new data")
-    data = pd.concat([data, new_data])
-    print("saving data")
-    data.to_csv(cache_file)
-    # finally send a message to telegram
-    telegram_msg = "new data point from {0}. current position: ".format(str(time_update)) + \
-            "https://www.google.com/maps/search/?api=1&query={0},{1}".format(
-                lat, long)
-    telegram_send_message_to_scali(telegram_msg)
-else:
-    print("no new data - going back to sleep")
-    
+    last_update = data.index[-1]
+
+    if time_update > last_update:
+        print("got new data")
+        data = pd.concat([data, new_data])
+        print("saving data")
+        data.to_csv(cache_file)
+        # finally send a message to telegram
+        telegram_msg = "new data point from {0}. current position: ".format(str(time_update)) + \
+                "https://www.google.com/maps/search/?api=1&query={0},{1}".format(
+                    lat, long)
+        telegram_send_message_to_scali(telegram_msg)
+    else:
+        print("no new data - going back to sleep")
 
 
+if __name__ == '__main__':
+    main()
 
 
 
