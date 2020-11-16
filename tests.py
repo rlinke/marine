@@ -76,15 +76,18 @@ def parse_requests_response(result):
     """
     result['timestamp'] = pd.Timestamp(result['lastPos'], unit='s')
     del result['lastPos']
-    result['departurePort']['timestamp'] = pd.Timestamp(result['departurePort']['timestamp'], unit='s')
-    result['arrivalPort']['timestamp'] = pd.Timestamp(result['arrivalPort']['timestamp'], unit='s')
+    if 'departurePort' in result and result['departurePort'] is not None:
+        result['departurePort']['timestamp'] = pd.Timestamp(result['departurePort']['timestamp'], unit='s')
+    
+    if 'arrivalPort' in result and result['arrivalPort'] is not None:
+        result['arrivalPort']['timestamp'] = pd.Timestamp(result['arrivalPort']['timestamp'], unit='s')
     
     for elem in ['departurePort', 'arrivalPort']:
-        
-        for key, value in result[elem].items():
-            result[elem + '_' + key] = value
-            
-        del result[elem]
+        if elem in result and result[elem] is not None:
+            for key, value in result[elem].items():
+                result[elem + '_' + key] = value
+                
+            del result[elem]
     
     df = pd.DataFrame(result, index=[result['timestamp']])
     return df
@@ -94,12 +97,16 @@ def parse_requests_response(result):
 def get_marine_data_requests():
     """
         Request URL: https://www.marinetraffic.com/vesselDetails/latestPosition/shipid:5754836
-
+    url = "https://www.marinetraffic.com/en/vesselDetails/vesselInfo/shipid:5754836"
+    
     """
     url = "https://www.marinetraffic.com/vesselDetails/latestPosition/shipid:5754836"
     
     headers = {
-	    "User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Mobile Safari/537.36"
+	    "User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Mobile Safari/537.36",
+        "Referer": "https://www.marinetraffic.com/en/ais/details/ships/shipid:5754836/mmsi:211191540/imo:0/vessel:LA_FLACA",
+        "Accept": "*/*",
+        "X-Requested-With": "XMLHttpRequest"
         }
     
     resp = requests.get(url, headers=headers)
@@ -148,13 +155,12 @@ def update_interval(last, now):
 """
 
 def get_distance(df):
-    if len(df) > 1:
+    if len(df) == 1:
         return 0
     
-    lat, long = df[-1]['lat'], df[-1]['lon']
-    lat2, long2 = df[-2]['lat'], df[-2]['lon']
+    lat, long = df.iloc[-1]['lat'], df.iloc[-1]['lon']
+    lat2, long2 = df.iloc[-2]['lat'], df.iloc[-2]['lon']
     return geopy.distance.distance((lat, long), (lat2, long2)).km
-
 
 
 def main():
